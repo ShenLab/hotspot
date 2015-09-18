@@ -70,7 +70,7 @@ class ConvergenceMonitor(object):
     def converged(self):
         return (self.iter == self.n_iter or
                 (len(self.history) == 2 and
-                 self.history[1] - self.history[0] < self.thresh))
+                 np.abs(self.history[1] - self.history[0]) < self.thresh))
 
 
 class _BaseHMM(BaseEstimator):
@@ -336,15 +336,19 @@ class _BaseHMM(BaseEstimator):
         """
         self._init(obs, self.init_params)
 
+
         for i in range(self.n_iter):
             stats = self._initialize_sufficient_statistics()
             curr_logprob = 0
             for seq in obs:
                 framelogprob = self._compute_log_likelihood(seq)
+
                 lpr, fwdlattice = self._do_forward_pass(framelogprob)
                 bwdlattice = self._do_backward_pass(framelogprob)
                 gamma = fwdlattice + bwdlattice
                 posteriors = np.exp(gamma.T - logsumexp(gamma, axis=1)).T
+
+
                 curr_logprob += lpr
                 self._accumulate_sufficient_statistics(
                     stats, seq, framelogprob, posteriors, fwdlattice,
@@ -494,4 +498,7 @@ class _BaseHMM(BaseEstimator):
             transmat_ = normalize(
                 np.maximum(self.transmat_prior - 1.0 + stats['trans'], 1e-20),
                 axis=1)
+            # impluse requiment of transmat_prior
+            transmat_ = normalize( np.maximum(self.transmat_prior , transmat_), axis=1)
             self.transmat_ = transmat_
+            
